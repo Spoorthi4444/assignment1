@@ -14,7 +14,7 @@ int main(int argc, char const *argv[])
     struct sockaddr_in address;
     int opt = 1;
     int addrlen = sizeof(address);
-    char buffer[102] = {0};
+    char buffer[1024] = {0};
     char *hello = "Hello from server";
 
     printf("execve=0x%p\n", execve);
