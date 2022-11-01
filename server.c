@@ -6,7 +6,9 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <string.h>
-
+#include <sys/types.h>
+#include <pwd.h>
+#include <sys/wait.h>
 #define PORT 80
 int main(int argc, char const *argv[])
 {
@@ -18,7 +20,13 @@ int main(int argc, char const *argv[])
     char *hello = "Hello from server";
 
     printf("execve=0x%p\n", execve);
-
+    pid_t current_pid, parent_pid;
+    const char *nobody = "nobody";
+    struct passwd *nobody_structure;
+    uid_t nobody_pw_uid;
+    int return_value;
+    current_pid = getuid();
+    
     // Creating socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
     {
@@ -55,9 +63,45 @@ int main(int argc, char const *argv[])
         perror("accept");
         exit(EXIT_FAILURE);
     }
+    
+    // socket creation ends here
+    
+    printf("Processing the data from client starts here- Implementing Privilage Seperation\n");
+    current_pid = fork();
+    
+    if (current_pid == 0)
+    {
+    	printf("This is a child process\n");
+    	nobody_structure = getpwnam(nobody);
+    	if(nobody_structure == NULL)
+    	{
+    		printf("Matching entry is not found\n");
+    		return 0;
+    	}
+    	nobody_pw_uid = nobody_structure->pw_uid;
+    	printf("nobody_pw_uid is : %d\n", nobody_pw_uid);
+    	return_value = setuid(nobody_pw_uid);
+    	printf("return value of setuid is : %d\n", return_value);
+    	if (nobody_pw_uid == -1)
+    	{
+    		printf("Error while dropping privilage\n");
+    		return 0;
+    	}        	
+    
     valread = read( new_socket , buffer, 1024);
     printf("%s\n",buffer );
     send(new_socket , hello , strlen(hello) , 0 );
     printf("Hello message sent\n");
-    return 0;
+    
+   }
+   else if(current_pid > 0)
+   {
+   	wait(NULL);
+   	printf("This is a parent process\n");
+   }
+   else
+   {
+   	printf("parent process:Child creation with for failed\n");
+   }
+   return 0;
 }
